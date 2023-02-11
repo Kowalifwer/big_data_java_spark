@@ -2,6 +2,7 @@ package uk.ac.gla.dcs.bigdata.apps;
 
 import java.io.File;
 import java.util.List;
+import java.util.ArrayList;
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
@@ -25,6 +26,29 @@ import uk.ac.gla.dcs.bigdata.providedstructures.Query;
  */
 public class AssessedExercise {
 
+	//create new list classed strings
+	public static List<String> prints = new ArrayList<String>();
+
+	public static void print(Object... objs) {
+		//add to prints
+		StringBuilder sb = new StringBuilder();
+		for(Object obj : objs) {
+			sb.append(obj.toString());
+			//if not last object, add comma
+			if(obj != objs[objs.length-1])
+				sb.append(" ");
+		}
+		prints.add(sb.toString());
+	}
+
+	public static void finalize_print() {	
+		//loop over prints, print each on new line
+		System.out.println("---------------PRINTS---------------");
+		for (String s : prints) {
+			System.out.println(s);
+		}
+		System.out.println("-------------------------------------");
+	}
 	
 	public static void main(String[] args) {
 		
@@ -40,15 +64,14 @@ public class AssessedExercise {
 		
 		// Create the Spark Configuration 
 		SparkConf conf = new SparkConf()
-				.setMaster(sparkMasterDef)
-				.setAppName(sparkSessionName);
+			.setMaster(sparkMasterDef)
+			.setAppName(sparkSessionName);
 		
 		// Create the spark session
 		SparkSession spark = SparkSession
 				  .builder()
 				  .config(conf)
 				  .getOrCreate();
-	
 		
 		// Get the location of the input queries
 		String queryFile = System.getenv("bigdata.queries");
@@ -80,7 +103,7 @@ public class AssessedExercise {
 			}
 		}
 		
-		
+		finalize_print();
 	}
 	
 	
@@ -94,12 +117,15 @@ public class AssessedExercise {
 		// Perform an initial conversion from Dataset<Row> to Query and NewsArticle Java objects
 		Dataset<Query> queries = queriesjson.map(new QueryFormaterMap(), Encoders.bean(Query.class)); // this converts each row into a Query
 		Dataset<NewsArticle> news = newsjson.map(new NewsFormaterMap(), Encoders.bean(NewsArticle.class)); // this converts each row into a NewsArticle
+
 		
 		//----------------------------------------------------------------
 		// Your Spark Topology should be defined here
 		//----------------------------------------------------------------
-		
-		
+		//HERE
+		//set of queries -> query -> [10 documents]
+		//each doc processed, remove stopwords etc..
+		//For this exercise, you only need to use the ‘id’, ‘title’ and ‘contents’ fields. from NEWSARTICLE
 		return null; // replace this with the the list of DocumentRanking output by your topology
 	}
 	
