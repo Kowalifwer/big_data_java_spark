@@ -144,9 +144,6 @@ public class AssessedExercise {
 
 		//go over every object in processed news, and print
 		print(proccessedNews.collectAsList().get(0));
-		
-
-
 
 		//----------------------------------------------------------------
 		// Your Spark Topology should be defined here
