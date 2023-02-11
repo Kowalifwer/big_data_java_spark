@@ -3,17 +3,21 @@ package uk.ac.gla.dcs.bigdata.apps;
 import java.io.File;
 import java.util.List;
 import java.util.ArrayList;
+
+import org.apache.hadoop.thirdparty.org.checkerframework.checker.units.qual.C;
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
-
+import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.broadcast.Broadcast;
 import uk.ac.gla.dcs.bigdata.providedfunctions.NewsFormaterMap;
 import uk.ac.gla.dcs.bigdata.providedfunctions.QueryFormaterMap;
 import uk.ac.gla.dcs.bigdata.providedstructures.DocumentRanking;
 import uk.ac.gla.dcs.bigdata.providedstructures.NewsArticle;
 import uk.ac.gla.dcs.bigdata.providedstructures.Query;
+import uk.ac.gla.dcs.bigdata.providedutilities.TextPreProcessor;
 
 /**
  * This is the main class where your Spark topology should be specified.
@@ -117,8 +121,25 @@ public class AssessedExercise {
 		// Perform an initial conversion from Dataset<Row> to Query and NewsArticle Java objects
 		Dataset<Query> queries = queriesjson.map(new QueryFormaterMap(), Encoders.bean(Query.class)); // this converts each row into a Query
 		Dataset<NewsArticle> news = newsjson.map(new NewsFormaterMap(), Encoders.bean(NewsArticle.class)); // this converts each row into a NewsArticle
-
 		
+		// Broadcast<TextPreProcessor> broadcastPreProcessor= JavaSparkContext.fromSparkContext(spark.sparkContext()).broadcast(new TextPreProcessor());
+		// ArticleFormatter xd = new ArticleFormatter(broadcastPreProcessor);
+
+		Dataset<ProcessedArticle> proccessedNews = news.map(new ArticleFormatter(), Encoders.bean(ProcessedArticle.class));
+		//at this point we should have the following:
+		//- short termFrequencyInCurrentDocument,
+		// int totalTermFrequencyInCorpus,
+		// int currentDocumentLength,
+
+		print(proccessedNews.first());
+		// double averageDocumentLengthInCorpus,
+		// long totalDocsInCorpus)
+
+
+		//
+
+
+
 		//----------------------------------------------------------------
 		// Your Spark Topology should be defined here
 		//----------------------------------------------------------------
