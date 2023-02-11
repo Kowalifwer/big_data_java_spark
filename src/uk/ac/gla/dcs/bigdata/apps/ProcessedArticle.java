@@ -2,17 +2,18 @@ package uk.ac.gla.dcs.bigdata.apps;
 import java.io.Serializable;
 import java.util.List;
 import java.util.HashMap;
+import java.util.Map;
 
 public class ProcessedArticle implements Serializable {
 
     private static final long serialVersionUID = 7860293794072512243L;
 
     String id;
-    HashMap<String, Integer> tokenCounts;
+    Map<String, Integer> tokenCounts;
     int totalTokenCount;
 
     public ProcessedArticle() {}
-    public ProcessedArticle(String id, HashMap<String, Integer> tokenCounts, int totalTokenCount) {
+    public ProcessedArticle(String id, Map<String, Integer> tokenCounts, int totalTokenCount) {
         this.id = id;
         this.tokenCounts = tokenCounts;
         this.totalTokenCount = totalTokenCount;
@@ -27,11 +28,11 @@ public class ProcessedArticle implements Serializable {
         this.id = id;
     }
 
-    public HashMap<String, Integer> getTokenCounts() {
+    public Map<String, Integer> getTokenCounts() {
         return tokenCounts;
     }
 
-    public void setTokenCounts(HashMap<String, Integer> tokenCounts) {
+    public void setTokenCounts(Map<String, Integer> tokenCounts) {
         this.tokenCounts = tokenCounts;
     }
 

@@ -19,6 +19,8 @@ import uk.ac.gla.dcs.bigdata.providedstructures.NewsArticle;
 import uk.ac.gla.dcs.bigdata.providedstructures.Query;
 import uk.ac.gla.dcs.bigdata.providedutilities.TextPreProcessor;
 
+import org.apache.spark.util.LongAccumulator;
+
 /**
  * This is the main class where your Spark topology should be specified.
  * 
@@ -125,18 +127,24 @@ public class AssessedExercise {
 		// Broadcast<TextPreProcessor> broadcastPreProcessor= JavaSparkContext.fromSparkContext(spark.sparkContext()).broadcast(new TextPreProcessor());
 		// ArticleFormatter xd = new ArticleFormatter(broadcastPreProcessor);
 
-		Dataset<ProcessedArticle> proccessedNews = news.map(new ArticleFormatter(), Encoders.bean(ProcessedArticle.class));
+		LongAccumulator wordCountAccumulator = spark.sparkContext().longAccumulator();
+		MapAccumulator tokenCountMapAccumulator = new MapAccumulator();
+        spark.sparkContext().register(tokenCountMapAccumulator, "tokenCountMapAccumulator");
+
+		ArticleFormatter articleFormatter = new ArticleFormatter(wordCountAccumulator, tokenCountMapAccumulator);
+
+		Dataset<ProcessedArticle> proccessedNews = news.map(articleFormatter, Encoders.bean(ProcessedArticle.class));
 		//at this point we should have the following:
 		//- short termFrequencyInCurrentDocument,
 		// int totalTermFrequencyInCorpus,
 		// int currentDocumentLength,
-
-		print(proccessedNews.first());
 		// double averageDocumentLengthInCorpus,
 		// long totalDocsInCorpus)
+		
 
-
-		//
+		//go over every object in processed news, and print
+		print(proccessedNews.collectAsList().get(0));
+		
 
 
 

@@ -6,18 +6,25 @@ import uk.ac.gla.dcs.bigdata.providedstructures.ContentItem;
 import java.util.List;
 import org.apache.spark.broadcast.Broadcast;
 import java.util.HashMap;
+import java.util.Map;
+import org.apache.spark.util.LongAccumulator;
+
 
 public class ArticleFormatter implements MapFunction<NewsArticle,ProcessedArticle> {
-    private static final long serialVersionUID = -4631167868446468097L;
+    private static final long serialVersionUID = -484810270156328326L;
 
     //global processor
     // Broadcast<TextPreProcessor> processor;
-
+    LongAccumulator wordCountAccumulator;
+    MapAccumulator tokenCountsMapAccumulator;
     // public ArticleFormatter(Broadcast<TextPreProcessor> textProcessor) {
     //     this.processor = textProcessor;
     // }
 
-
+    public ArticleFormatter(LongAccumulator wordCountAccumulator, MapAccumulator tokenCountsMapAccumulator) {
+        this.wordCountAccumulator = wordCountAccumulator;
+        this.tokenCountsMapAccumulator = tokenCountsMapAccumulator;
+    }
     // {xd: 5, ass: 6, lmao}    
     // {ass:6, dick; 17}.update(next)
     //3: etc..
@@ -41,16 +48,19 @@ public class ArticleFormatter implements MapFunction<NewsArticle,ProcessedArticl
         }
 
         List<String> tokens = processor.process(sb.toString());
-        HashMap<String, Integer> tokenCounts = new HashMap<String, Integer>();
+        Map<String, Integer> tokenCounts = new HashMap<String, Integer>();
         //loop over tokens, for each unique token, count the number of occurences
         int totalTokenCount = tokens.size();
-        // for (String token : tokens) {
-        //     if (tokenCounts.containsKey(token)) {
-        //         tokenCounts.put(token, tokenCounts.get(token) + 1);
-        //     } else {
-        //         tokenCounts.put(token, 1);
-        //     }
-        // }
+        wordCountAccumulator.add(totalTokenCount);
+        for (String token : tokens) {
+            if (tokenCounts.containsKey(token)) {
+                tokenCounts.put(token, tokenCounts.get(token) + 1);
+            } else {
+                tokenCounts.put(token, 1);
+            }
+        }
+        tokenCountsMapAccumulator.add(tokenCounts);
+
 
         ProcessedArticle processed_article = new ProcessedArticle(article.getId(), tokenCounts, totalTokenCount);
         return processed_article;
