@@ -143,61 +143,47 @@ public class AssessedExercise {
 
         Dataset<QueryResult> queryResults = processedNews.map(resultsFormatter, Encoders.bean(QueryResult.class));
 		Dataset<QueryResult> orderedQueryResults = queryResults.orderBy(functions.col("score").desc());
-		long orderedQueryResultsSize = totalDocsInCorpusBroadcast.value();
-
+        List<QueryResult> orderedQueryResultsList = orderedQueryResults.collectAsList();
         List<NewsArticle> bestMatchesArticles = new ArrayList<NewsArticle>();
 
-		long i = 0;
-		final int BATCH_SIZE = 4 * nResults;
 		final double TITLE_SIMILARITY_TRESHOLD = 0.5;
-		int batch_counter = 0;
         int duplicate_counter = 0;
         double best_score = 0;
         double worst_score = Double.MAX_VALUE;
-		boolean running = true;
-		while (running) {
-			List<QueryResult> currentBatch = orderedQueryResults.limit((batch_counter + 1) * BATCH_SIZE).collectAsList();
-            currentBatch = currentBatch.subList(batch_counter * BATCH_SIZE, currentBatch.size());
-            
-            for (int entryIndex = 0; entryIndex < BATCH_SIZE; entryIndex++) {
-				if (bestMatchesArticles.size() < nResults && i < orderedQueryResultsSize) {
-					QueryResult current = currentBatch.get(entryIndex);
-					NewsArticle article = current.getProcessedArticle().getNewsArticle();
+		for (QueryResult current: orderedQueryResultsList) {
+            if (bestMatchesArticles.size() < nResults) {
+                NewsArticle article = current.getProcessedArticle().getNewsArticle();
 
-                    if (current.getScore() > best_score) {
-                        best_score = current.getScore();
-                    }
-                    if (current.getScore() < worst_score) {
-                        worst_score = current.getScore();
-                    }
+                if (current.getScore() > best_score) {
+                    best_score = current.getScore();
+                }
+                if (current.getScore() < worst_score) {
+                    worst_score = current.getScore();
+                }
 
-					boolean found = false;
-                    if (article.getTitle() != null) {
-                        for (NewsArticle comparingNewsArticle : bestMatchesArticles) {
-                            if(comparingNewsArticle.getTitle() != null && TextDistanceCalculator.similarity(article.getTitle(), comparingNewsArticle.getTitle()) < TITLE_SIMILARITY_TRESHOLD) {
-                                found = true;
-                                duplicate_counter++;
-                                break;
-                            }
+                boolean found = false;
+                if (article.getTitle() != null) {
+                    for (NewsArticle comparingNewsArticle : bestMatchesArticles) {
+                        if(comparingNewsArticle.getTitle() != null && TextDistanceCalculator.similarity(article.getTitle(), comparingNewsArticle.getTitle()) < TITLE_SIMILARITY_TRESHOLD) {
+                            found = true;
+                            duplicate_counter++;
+                            break;
                         }
                     }
+                }
 
-				if(!found) {
-                        bestMatchesArticles.add(article);
-					}
-					i++;
-				}
-				else {
-					running = false;
-					break;
-				}
+                if(!found) {
+                    bestMatchesArticles.add(article);
+                }
             }
-			batch_counter++;
-		}
+            else {
+                break;
+            }
+        }
 		if (verbose) {
         	best_score = Math.round(best_score * 100.0) / 100.0;
         	worst_score = Math.round(worst_score * 100.0) / 100.0;
-            print("Executing query: \"" + query.getOriginalQuery() + "\"", "Number of duplicates removed: " + duplicate_counter, "Number of batches executed: " + batch_counter, "Best score: " + best_score, "Worst score: " + worst_score);
+            print("Executing query: \"" + query.getOriginalQuery() + "\"", "Number of duplicates removed: " + duplicate_counter, "Best score: " + best_score, "Worst score: " + worst_score);
         }
         return bestMatchesArticles;
     }
@@ -227,7 +213,6 @@ public class AssessedExercise {
         Broadcast<Double> averageTokenCountPerDocumentBroadcast= JavaSparkContext.fromSparkContext(spark.sparkContext()).broadcast(averageTokenCountPerDocument);
         Broadcast<Map<String, Integer>> corpusTokenCountMapBroadcast = JavaSparkContext.fromSparkContext(spark.sparkContext()).broadcast(tokenCountMapAccumulator.value());
         Broadcast<Long> totalDocsInCorpusBroadcast = JavaSparkContext.fromSparkContext(spark.sparkContext()).broadcast(totalDocsInCorups);
-
 		//at this point we should have the following:
 		//- short termFrequencyInCurrentDocument,
 		// int totalTermFrequencyInCorpus,
