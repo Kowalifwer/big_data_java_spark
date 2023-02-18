@@ -15,19 +15,16 @@ public class ArticleFormatter implements MapFunction<NewsArticle,ProcessedArticl
 
     //global processor
     // Broadcast<TextPreProcessor> processor;
-    LongAccumulator wordCountAccumulator;
+    LongAccumulator tokenCountAccumulator;
     MapAccumulator tokenCountsMapAccumulator;
     // public ArticleFormatter(Broadcast<TextPreProcessor> textProcessor) {
     //     this.processor = textProcessor;
     // }
 
-    public ArticleFormatter(LongAccumulator wordCountAccumulator, MapAccumulator tokenCountsMapAccumulator) {
-        this.wordCountAccumulator = wordCountAccumulator;
+    public ArticleFormatter(LongAccumulator tokenCountAccumulator, MapAccumulator tokenCountsMapAccumulator) {
+        this.tokenCountAccumulator = tokenCountAccumulator;
         this.tokenCountsMapAccumulator = tokenCountsMapAccumulator;
     }
-    // {xd: 5, ass: 6, lmao}    
-    // {ass:6, dick; 17}.update(next)
-    //3: etc..
 
     //GLOBAL COUNTS DICT
     //aVG DOC LENGTH
@@ -51,7 +48,7 @@ public class ArticleFormatter implements MapFunction<NewsArticle,ProcessedArticl
         Map<String, Integer> tokenCounts = new HashMap<String, Integer>();
         //loop over tokens, for each unique token, count the number of occurences
         int totalTokenCount = tokens.size();
-        wordCountAccumulator.add(totalTokenCount);
+        tokenCountAccumulator.add(totalTokenCount);
         for (String token : tokens) {
             if (tokenCounts.containsKey(token)) {
                 tokenCounts.put(token, tokenCounts.get(token) + 1);
@@ -61,8 +58,7 @@ public class ArticleFormatter implements MapFunction<NewsArticle,ProcessedArticl
         }
         tokenCountsMapAccumulator.add(tokenCounts);
 
-
-        ProcessedArticle processed_article = new ProcessedArticle(article.getId(), tokenCounts, totalTokenCount);
+        ProcessedArticle processed_article = new ProcessedArticle(article, tokenCounts, totalTokenCount);
         return processed_article;
     }
         

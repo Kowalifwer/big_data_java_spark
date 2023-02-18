@@ -1,31 +1,30 @@
 package uk.ac.gla.dcs.bigdata.apps;
 import java.io.Serializable;
-import java.util.List;
-import java.util.HashMap;
 import java.util.Map;
+
+import uk.ac.gla.dcs.bigdata.providedstructures.NewsArticle;
 
 public class ProcessedArticle implements Serializable {
 
     private static final long serialVersionUID = 7860293794072512243L;
 
-    String id;
+    NewsArticle newsArticle;
     Map<String, Integer> tokenCounts;
     int totalTokenCount;
 
     public ProcessedArticle() {}
-    public ProcessedArticle(String id, Map<String, Integer> tokenCounts, int totalTokenCount) {
-        this.id = id;
-        this.tokenCounts = tokenCounts;
+    public ProcessedArticle(NewsArticle newsArticle, Map<String, Integer> tokenCounts, int totalTokenCount) {
+        this.newsArticle = newsArticle;
+        this.tokenCounts = tokenCounts; //this is token:count map
         this.totalTokenCount = totalTokenCount;
     }
 
-    //do all getters and setters please
-    public String getId() {
-        return id;
+    public NewsArticle getNewsArticle() {
+        return newsArticle;
     }
 
-    public void setId(String id) {
-        this.id = id;
+    public void setNewsArticle(NewsArticle newsArticle) {
+        this.newsArticle = newsArticle;
     }
 
     public Map<String, Integer> getTokenCounts() {
@@ -45,7 +44,7 @@ public class ProcessedArticle implements Serializable {
     }
 
     public String toString() {
-        return "ID: " + id + " Tokens: " + tokenCounts.toString();
+        return "Tokens: " + tokenCounts.toString();
     }
     
 }

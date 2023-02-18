@@ -39,7 +39,7 @@ public class DPHScorer {
 					double DPHScore = norm 
 							* (termFrequencyInCurrentDocument
 							* WeightingModelLibrary.log((termFrequencyInCurrentDocument * averageDocumentLengthInCorpus/currentDocumentLength) * (totalDocsInCorpus/totalTermFrequencyInCorpus) )
-					 	    + 0.5d 
+					 	    + 0.5d
 					 	    * WeightingModelLibrary.log(2d*Math.PI*termFrequencyInCurrentDocument*(1d-f))
 					);
 					
