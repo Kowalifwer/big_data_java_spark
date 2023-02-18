@@ -184,6 +184,14 @@ public class AssessedExercise {
         	best_score = Math.round(best_score * 100.0) / 100.0;
         	worst_score = Math.round(worst_score * 100.0) / 100.0;
             print("Executing query: \"" + query.getOriginalQuery() + "\"", "Number of duplicates removed: " + duplicate_counter, "Best score: " + best_score, "Worst score: " + worst_score);
+			for(NewsArticle article : bestMatchesArticles) {
+				String title = "<no title>";
+				if (article.getTitle() != null) {
+					title = article.getTitle();
+				}
+				print("\t", title);
+			}
+			print("\n");
         }
         return bestMatchesArticles;
     }
@@ -204,7 +212,6 @@ public class AssessedExercise {
         spark.sparkContext().register(tokenCountMapAccumulator, "tokenCountMapAccumulator");
 
 		ArticleFormatter articleFormatter = new ArticleFormatter(tokenCountAccumulator, tokenCountMapAccumulator);
-
 		Dataset<ProcessedArticle> proccessedNews = news.map(articleFormatter, Encoders.bean(ProcessedArticle.class));
         
         long totalDocsInCorups = proccessedNews.count();
@@ -239,9 +246,7 @@ public class AssessedExercise {
         //go over all queries, and for each query, run the processQuery function
         for (Query query : queries.collectAsList()) {
             List<NewsArticle> queryResult = processQuery(spark, query, proccessedNews, averageTokenCountPerDocumentBroadcast, corpusTokenCountMapBroadcast, totalDocsInCorpusBroadcast, 10, true);
-            // print(queryResult);
         }
-        // print(queryResult);
 
         // double xd = DPHScorer.getDPHScore((short)0,500, 10000, averageTokenCountPerDocument, totalDocsInCorups);
 

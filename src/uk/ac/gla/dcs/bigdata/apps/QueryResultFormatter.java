@@ -27,14 +27,14 @@ public class QueryResultFormatter implements MapFunction<ProcessedArticle, Query
     @Override
     public QueryResult call(ProcessedArticle processedArticle) throws Exception {
         double score = 0;
-        for (String token : processedArticle.getTokenCounts().keySet()) {
-            if (queryTokenCounts.value().containsKey(token)) {
-                int termFrequencyInCurrentDocument = processedArticle.getTokenCounts().get(token);
-                int totalTermFrequencyInCorpus = globalTokenCountMap.value().get(token);
+        for(String queryToken : queryTokenCounts.value().keySet()) {
+            if(processedArticle.getTokenCounts().containsKey(queryToken)) {
+                int termFrequencyInCurrentDocument = processedArticle.getTokenCounts().get(queryToken);
+                int totalTermFrequencyInCorpus = globalTokenCountMap.value().get(queryToken);
                 int currentDocumentLength = processedArticle.getTotalTokenCount();
                 double currentScore = DPHScorer.getDPHScore((short)termFrequencyInCurrentDocument, totalTermFrequencyInCorpus, currentDocumentLength, averageTokenCountPerDocument.value(), totalDocumentsInCorpus.value());
                 if (!Double.isNaN(currentScore)) {
-                    score += currentScore * queryTokenCounts.value().get(token);
+                    score += currentScore * queryTokenCounts.value().get(queryToken);
                 }
             }
         }
