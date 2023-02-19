@@ -4,7 +4,6 @@ import uk.ac.gla.dcs.bigdata.providedstructures.NewsArticle;
 import uk.ac.gla.dcs.bigdata.providedutilities.TextPreProcessor;
 import uk.ac.gla.dcs.bigdata.providedstructures.ContentItem;
 import java.util.List;
-import org.apache.spark.broadcast.Broadcast;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.spark.util.LongAccumulator;
@@ -13,21 +12,13 @@ import org.apache.spark.util.LongAccumulator;
 public class ArticleFormatter implements MapFunction<NewsArticle,ProcessedArticle> {
     private static final long serialVersionUID = -484810270156328326L;
 
-    //global processor
-    // Broadcast<TextPreProcessor> processor;
     LongAccumulator tokenCountAccumulator;
     MapAccumulator tokenCountsMapAccumulator;
-    // public ArticleFormatter(Broadcast<TextPreProcessor> textProcessor) {
-    //     this.processor = textProcessor;
-    // }
 
     public ArticleFormatter(LongAccumulator tokenCountAccumulator, MapAccumulator tokenCountsMapAccumulator) {
         this.tokenCountAccumulator = tokenCountAccumulator;
         this.tokenCountsMapAccumulator = tokenCountsMapAccumulator;
     }
-
-    //GLOBAL COUNTS DICT
-    //aVG DOC LENGTH
 
     @Override
     public ProcessedArticle call(NewsArticle article) throws Exception {
@@ -37,7 +28,7 @@ public class ArticleFormatter implements MapFunction<NewsArticle,ProcessedArticl
             sb.append(article.getTitle());
         }
         for (ContentItem item : article.getContents()) {
-            if (item.getSubtype() != null) {
+            if (item != null && item.getSubtype() != null) {
                 if (item.getSubtype().equals("paragraph")) {
                     sb.append(item.getContent());
                 }

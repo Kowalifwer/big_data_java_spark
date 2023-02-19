@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
 
-import org.apache.hadoop.thirdparty.org.checkerframework.checker.units.qual.C;
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
@@ -21,8 +20,6 @@ import uk.ac.gla.dcs.bigdata.providedfunctions.QueryFormaterMap;
 import uk.ac.gla.dcs.bigdata.providedstructures.DocumentRanking;
 import uk.ac.gla.dcs.bigdata.providedstructures.NewsArticle;
 import uk.ac.gla.dcs.bigdata.providedstructures.Query;
-import uk.ac.gla.dcs.bigdata.providedutilities.TextPreProcessor;
-import uk.ac.gla.dcs.bigdata.providedutilities.DPHScorer;
 import uk.ac.gla.dcs.bigdata.providedutilities.TextDistanceCalculator;
 
 import org.apache.spark.util.LongAccumulator;
@@ -88,11 +85,13 @@ public class AssessedExercise {
 		// Get the location of the input queries
 		String queryFile = System.getenv("bigdata.queries");
 		if (queryFile==null) queryFile = "data/queries.list"; // default is a sample with 3 queries
+        // if (queryFile==null) queryFile = "data/queries_custom.list"; // default is a sample with 3 queries
+
 		
 		// Get the location of the input news articles
 		String newsFile = System.getenv("bigdata.news");
 		if (newsFile==null) newsFile = "data/TREC_Washington_Post_collection.v3.example.json"; // default is a sample of 5000 news articles
-		
+		// if (newsFile==null) newsFile = "data/TREC_Washington_Post_collection.v2.jl.fix.json"; // default is a sample of 600,000 news articles
 		// Call the student's code
 		List<DocumentRanking> results = rankDocuments(spark, queryFile, newsFile);
 		
@@ -127,8 +126,9 @@ public class AssessedExercise {
         
                 //first we have query -> all documents map. Each document will store associated DPH score.
 
-    public static List<NewsArticle> processQuery(SparkSession spark, Query query, Dataset<ProcessedArticle> processedNews, Broadcast<Double> averageTokenCountPerDocument, Broadcast<Map<String, Integer>> corpusTokenCountMap, Broadcast<Long> totalDocsInCorpusBroadcast, int nResults, boolean verbose) {
-		
+    public static List<NewsArticle> processQuery(SparkSession spark, Query query, Dataset<ProcessedArticle> processedNews, double averageTokenCountPerDocument, Broadcast<Map<String, Integer>> corpusTokenCountMap, long totalDocsInCorpusBroadcast, int nResults, boolean verbose) {
+		long startTime = System.currentTimeMillis();
+
         List<String> queryTerms = query.getQueryTerms();
         short[] queryTermCounts = query.getQueryTermCounts();
 
@@ -183,7 +183,7 @@ public class AssessedExercise {
 		if (verbose) {
         	best_score = Math.round(best_score * 100.0) / 100.0;
         	worst_score = Math.round(worst_score * 100.0) / 100.0;
-            print("Executing query: \"" + query.getOriginalQuery() + "\"", "Number of duplicates removed: " + duplicate_counter, "Best score: " + best_score, "Worst score: " + worst_score);
+            print("Executing query: \"" + query.getOriginalQuery() + "\"", "Number of duplicates removed: " + duplicate_counter, "Best score: " + best_score, "Worst score: " + worst_score, "Time taken: " + (System.currentTimeMillis() - startTime) + "ms");
 			for(NewsArticle article : bestMatchesArticles) {
 				String title = "<no title>";
 				if (article.getTitle() != null) {
@@ -205,7 +205,6 @@ public class AssessedExercise {
 		// Perform an initial conversion from Dataset<Row> to Query and NewsArticle Java objects
 		Dataset<Query> queries = queriesjson.map(new QueryFormaterMap(), Encoders.bean(Query.class)); // this converts each row into a Query
 		Dataset<NewsArticle> news = newsjson.map(new NewsFormaterMap(), Encoders.bean(NewsArticle.class)); // this converts each row into a NewsArticle
-		// ArticleFormatter xd = new ArticleFormatter(broadcastPreProcessor);
 
 		LongAccumulator tokenCountAccumulator = spark.sparkContext().longAccumulator();
 		MapAccumulator tokenCountMapAccumulator = new MapAccumulator();
@@ -217,47 +216,15 @@ public class AssessedExercise {
         long totalDocsInCorups = proccessedNews.count();
         double averageTokenCountPerDocument = (double)tokenCountAccumulator.value() / totalDocsInCorups;
 
-        Broadcast<Double> averageTokenCountPerDocumentBroadcast= JavaSparkContext.fromSparkContext(spark.sparkContext()).broadcast(averageTokenCountPerDocument);
         Broadcast<Map<String, Integer>> corpusTokenCountMapBroadcast = JavaSparkContext.fromSparkContext(spark.sparkContext()).broadcast(tokenCountMapAccumulator.value());
-        Broadcast<Long> totalDocsInCorpusBroadcast = JavaSparkContext.fromSparkContext(spark.sparkContext()).broadcast(totalDocsInCorups);
-		//at this point we should have the following:
-		//- short termFrequencyInCurrentDocument,
-		// int totalTermFrequencyInCorpus,
-		// int currentDocumentLength,
-		// double averageDocumentLengthInCorpus,
-		// long totalDocsInCorpus)
-        //WHEN WE USE DPH FUNCTION, WE ASSUME ACCESS TO THE FOLLOWING: QUERY, processedDocument and accumulators.
-
-        //calcualte DPH for every token in every document -> inverse access
-        //iterate over every query, every tok
-
-        //for query in all existing queries FOR LOOP
-        	// for document in processedArticles SPARK LOOP -to calculate relevancy scores for all the documents
-				//for query token in query -> fetch scores from map NORMAL FOR
-                //sum all the token stuff
-			//-> output map from QUERY to DOCUMENT RELEVANCY/SCORE
-        
-        //
-            //first we have query -> all documents map. Each document will store associated DPH score.
-		//go over every object in processed news, and print
         proccessedNews.collectAsList();
-		// queries.collectAsList();
 
         //go over all queries, and for each query, run the processQuery function
         for (Query query : queries.collectAsList()) {
-            List<NewsArticle> queryResult = processQuery(spark, query, proccessedNews, averageTokenCountPerDocumentBroadcast, corpusTokenCountMapBroadcast, totalDocsInCorpusBroadcast, 10, true);
+            List<NewsArticle> queryResult = processQuery(spark, query, proccessedNews, averageTokenCountPerDocument, corpusTokenCountMapBroadcast, totalDocsInCorups, 10, true);
         }
 
-        // double xd = DPHScorer.getDPHScore((short)0,500, 10000, averageTokenCountPerDocument, totalDocsInCorups);
-
-		//----------------------------------------------------------------
-		// Your Spark Topology should be defined here
-		//----------------------------------------------------------------
-		//HERE
-		//set of queries -> query -> [10 documents]
-		//each doc processed, remove stopwords etc..
-		//For this exercise, you only need to use the ‘id’, ‘title’ and ‘contents’ fields. from NEWSARTICLE
-		return null; // replace this with the the list of DocumentRanking output by your topology
+		return null;
 	}
 	
 	
