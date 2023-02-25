@@ -8,7 +8,6 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.spark.util.LongAccumulator;
 
-
 public class ArticleFormatter implements MapFunction<NewsArticle,ProcessedArticle> {
     private static final long serialVersionUID = -484810270156328326L;
 

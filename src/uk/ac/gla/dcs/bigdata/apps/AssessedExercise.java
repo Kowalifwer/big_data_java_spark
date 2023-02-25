@@ -67,7 +67,7 @@ public class AssessedExercise {
 		// The code submitted for the assessed exerise may be run in either local or remote modes
 		// Configuration of this will be performed based on an environment variable
 		String sparkMasterDef = System.getenv("spark.master");
-		if (sparkMasterDef==null) sparkMasterDef = "local[2]"; // default is local mode with two executors
+		if (sparkMasterDef==null) sparkMasterDef = "local[8]"; // default is local mode with two executors
 		
 		String sparkSessionName = "BigDataAE"; // give the session a name
 		
@@ -84,8 +84,8 @@ public class AssessedExercise {
 		
 		// Get the location of the input queries
 		String queryFile = System.getenv("bigdata.queries");
-		if (queryFile==null) queryFile = "data/queries.list"; // default is a sample with 3 queries
-        // if (queryFile==null) queryFile = "data/queries_custom.list"; // default is a sample with 3 queries
+		// if (queryFile==null) queryFile = "data/queries.list"; // default is a sample with 3 queries
+        if (queryFile==null) queryFile = "data/queries_custom.list"; // default is a sample with 3 queries
 
 		
 		// Get the location of the input news articles
@@ -143,13 +143,16 @@ public class AssessedExercise {
 
         Dataset<QueryResult> queryResults = processedNews.map(resultsFormatter, Encoders.bean(QueryResult.class));
 		Dataset<QueryResult> orderedQueryResults = queryResults.orderBy(functions.col("score").desc());
-        List<QueryResult> orderedQueryResultsList = orderedQueryResults.collectAsList();
+        //orderedQueryResults limit to first max of nResults*10 and collect as list
+
+        List<QueryResult> orderedQueryResultsList = orderedQueryResults.limit(nResults*10).collectAsList();
         List<NewsArticle> bestMatchesArticles = new ArrayList<NewsArticle>();
 
 		final double TITLE_SIMILARITY_TRESHOLD = 0.5;
         int duplicate_counter = 0;
         double best_score = 0;
         double worst_score = Double.MAX_VALUE;
+    
 		for (QueryResult current: orderedQueryResultsList) {
             if (bestMatchesArticles.size() < nResults) {
                 NewsArticle article = current.getProcessedArticle().getNewsArticle();
@@ -209,17 +212,14 @@ public class AssessedExercise {
 		LongAccumulator tokenCountAccumulator = spark.sparkContext().longAccumulator();
 		MapAccumulator tokenCountMapAccumulator = new MapAccumulator();
         spark.sparkContext().register(tokenCountMapAccumulator, "tokenCountMapAccumulator");
-
         
 		ArticleFormatter articleFormatter = new ArticleFormatter(tokenCountAccumulator, tokenCountMapAccumulator);
 		Dataset<ProcessedArticle> proccessedNews = news.map(articleFormatter, Encoders.bean(ProcessedArticle.class));
         
         long totalDocsInCorups = proccessedNews.count();
-        System.exit(1);
         double averageTokenCountPerDocument = (double)tokenCountAccumulator.value() / totalDocsInCorups;
         
         Broadcast<Map<String, Integer>> corpusTokenCountMapBroadcast = JavaSparkContext.fromSparkContext(spark.sparkContext()).broadcast(tokenCountMapAccumulator.value());
-        // proccessedNews.collectAsList();
 
         //go over all queries, and for each query, run the processQuery function
         for (Query query : queries.collectAsList()) {
