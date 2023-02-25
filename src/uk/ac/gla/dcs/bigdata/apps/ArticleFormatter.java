@@ -37,7 +37,7 @@ public class ArticleFormatter implements MapFunction<NewsArticle,ProcessedArticl
 
         List<String> tokens = processor.process(sb.toString());
         Map<String, Integer> tokenCounts = new HashMap<String, Integer>();
-        Map<String, Integer> tokenCountsBinary = new HashMap<String, Integer>(); //separate map required for binary counts for the global counts accumulator
+        HashMap<String, Integer> tokenCountsBinary = new HashMap<String, Integer>(); //separate map required for binary counts for the global counts accumulator
         //loop over tokens, for each unique token, count the number of occurences
         int totalTokenCount = tokens.size();
         tokenCountAccumulator.add(totalTokenCount);

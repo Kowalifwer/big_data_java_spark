@@ -3,21 +3,24 @@ package uk.ac.gla.dcs.bigdata.apps;
 import org.apache.spark.util.AccumulatorV2;
 
 import java.util.HashMap;
-import java.util.Map;
 
-public class MapAccumulator extends AccumulatorV2<Map<String, Integer>, Map<String, Integer>> {
-    private Map<String, Integer> map = new HashMap<>();
+public class MapAccumulator extends AccumulatorV2<HashMap<String, Integer>, HashMap<String, Integer>> {
+    private HashMap<String, Integer> map;
 
-    @Override
-    public boolean isZero() {
-        return map.isEmpty();
+    public MapAccumulator() {
+        map = new HashMap<>();
     }
 
     @Override
-    public AccumulatorV2<Map<String, Integer>, Map<String, Integer>> copy() {
-        MapAccumulator newAcc = new MapAccumulator();
-        newAcc.map = new HashMap<>(map);
-        return newAcc;
+    public boolean isZero() {
+        return map.size() == 0;
+    }
+
+    @Override
+    public AccumulatorV2<HashMap<String, Integer>, HashMap<String, Integer>> copy() {
+        MapAccumulator newAccCopy = new MapAccumulator();
+        newAccCopy.merge(this);
+        return newAccCopy;
     }
 
     @Override
@@ -26,25 +29,21 @@ public class MapAccumulator extends AccumulatorV2<Map<String, Integer>, Map<Stri
     }
 
     @Override
-    public void add(Map<String, Integer> v) {
-        for (Map.Entry<String, Integer> entry : v.entrySet()) {
-            String key = entry.getKey();
-            int value = entry.getValue();
-            map.merge(key, value, Integer::sum);
-        }
+    public void add(HashMap<String, Integer> v) {
+        v.forEach((key, value) -> {
+            this.map.merge(key, 1, (oldValue, newValue) -> oldValue + newValue);
+        });
     }
 
     @Override
-    public void merge(AccumulatorV2<Map<String, Integer>, Map<String, Integer>> other) {
-        for (Map.Entry<String, Integer> entry : other.value().entrySet()) {
-            String key = entry.getKey();
-            int value = entry.getValue();
-            map.merge(key, value, Integer::sum);
-        }
+    public void merge(AccumulatorV2<HashMap<String, Integer>, HashMap<String, Integer>> other) {
+        other.value().forEach((key, value) -> {
+            this.map.merge(key, value, (oldValue, newValue) -> oldValue + newValue);
+        });
     }
 
     @Override
-    public Map<String, Integer> value() {
-        return map;
+    public HashMap<String, Integer> value() {
+        return this.map;
     }
 }
