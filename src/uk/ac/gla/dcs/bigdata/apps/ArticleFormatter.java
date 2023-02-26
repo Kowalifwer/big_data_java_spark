@@ -40,15 +40,23 @@ public class ArticleFormatter implements MapFunction<NewsArticle,ProcessedArticl
     public ProcessedArticle call(NewsArticle article) throws Exception {
         TextPreProcessor processor = new TextPreProcessor();
         StringBuilder articleText = new StringBuilder();
+
         // add the title to the article text
         if (article.getTitle() != null) {
             articleText.append(article.getTitle());
         }
-        // add the non-empty, paragraph subtype contents to the article text
+
+        // add the non-empty, paragraph subtype contents to the article text. stop after adding 5 paragraphs.
+        int paragraphCount = 0;
         for (ContentItem item : article.getContents()) {
             if (item != null && item.getSubtype() != null) {
                 if (item.getSubtype().equals("paragraph")) {
+                    paragraphCount++;
+                    articleText.append(" ");
                     articleText.append(item.getContent());
+                    if (paragraphCount == 5) {
+                        break;
+                    }
                 }
             }
         }
