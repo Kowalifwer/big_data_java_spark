@@ -20,6 +20,7 @@ import uk.ac.gla.dcs.bigdata.providedfunctions.QueryFormaterMap;
 import uk.ac.gla.dcs.bigdata.providedstructures.DocumentRanking;
 import uk.ac.gla.dcs.bigdata.providedstructures.NewsArticle;
 import uk.ac.gla.dcs.bigdata.providedstructures.Query;
+import uk.ac.gla.dcs.bigdata.providedstructures.RankedResult;
 import uk.ac.gla.dcs.bigdata.providedutilities.TextDistanceCalculator;
 
 import org.apache.spark.util.LongAccumulator;
@@ -84,8 +85,8 @@ public class AssessedExercise {
 		
 		// Get the location of the input queries
 		String queryFile = System.getenv("bigdata.queries");
-		// if (queryFile==null) queryFile = "data/queries.list"; // default is a sample with 3 queries
-        if (queryFile==null) queryFile = "data/queries_custom.list"; // default is a sample with 3 queries
+		if (queryFile==null) queryFile = "data/queries.list"; // default is a sample with 3 queries
+        // if (queryFile==null) queryFile = "data/queries_custom.list"; // default is a sample with 3 queries
 
 		
 		// Get the location of the input news articles
@@ -126,36 +127,36 @@ public class AssessedExercise {
         
                 //first we have query -> all documents map. Each document will store associated DPH score.
 
-    public static List<NewsArticle> processQuery(SparkSession spark, Query query, Dataset<ProcessedArticle> processedNews, double averageTokenCountPerDocument, Broadcast<Map<String, Integer>> corpusTokenCountMap, long totalDocsInCorpusBroadcast, int nResults, boolean verbose) {
+    public static List<RankedResult> processQuery(SparkSession spark, Query query, Dataset<ProcessedArticle> processedArticles, double averageTokenCountPerDocument, Broadcast<Map<String, Integer>> corpusTokenCountMap, long totalDocsInCorpusBroadcast, int nResults, boolean verbose) {
 		long startTime = System.currentTimeMillis();
 
         List<String> queryTerms = query.getQueryTerms();
         short[] queryTermCounts = query.getQueryTermCounts();
 
         Map<String, Short> queryTokenCountMap = new HashMap<String, Short>();
-        for (int i = 0; i < query.getQueryTerms().size(); i++) {
+        for (int i = 0; i < queryTerms.size(); i++) {
             queryTokenCountMap.put(queryTerms.get(i), queryTermCounts[i]);
         }
 
         Broadcast<Map<String, Short>> queryTokenCountMapBroadcast = JavaSparkContext.fromSparkContext(spark.sparkContext()).broadcast(queryTokenCountMap);
         
-        QueryResultFormatter resultsFormatter = new QueryResultFormatter(averageTokenCountPerDocument, corpusTokenCountMap, queryTokenCountMapBroadcast, totalDocsInCorpusBroadcast);
+        RankedResultFormatter resultsFormatter = new RankedResultFormatter(averageTokenCountPerDocument, corpusTokenCountMap, queryTokenCountMapBroadcast, totalDocsInCorpusBroadcast);
 
-        Dataset<QueryResult> queryResults = processedNews.map(resultsFormatter, Encoders.bean(QueryResult.class));
-		Dataset<QueryResult> orderedQueryResults = queryResults.orderBy(functions.col("score").desc());
+        Dataset<RankedResult> queryResults = processedArticles.map(resultsFormatter, Encoders.bean(RankedResult.class));
+		Dataset<RankedResult> orderedQueryResults = queryResults.orderBy(functions.col("score").desc());
         //orderedQueryResults limit to first max of nResults*10 and collect as list
 
-        List<QueryResult> orderedQueryResultsList = orderedQueryResults.limit(nResults*10).collectAsList();
-        List<NewsArticle> bestMatchesArticles = new ArrayList<NewsArticle>();
+        List<RankedResult> orderedQueryResultsList = orderedQueryResults.limit(nResults*10).collectAsList();
+        List<RankedResult> bestRankedResults = new ArrayList<RankedResult>();
 
 		final double TITLE_SIMILARITY_TRESHOLD = 0.5;
         int duplicate_counter = 0;
         double best_score = 0;
         double worst_score = Double.MAX_VALUE;
     
-		for (QueryResult current: orderedQueryResultsList) {
-            if (bestMatchesArticles.size() < nResults) {
-                NewsArticle article = current.getProcessedArticle().getNewsArticle();
+		for (RankedResult current: orderedQueryResultsList) {
+            if (bestRankedResults.size() < nResults) {
+                NewsArticle article = current.getArticle();
 
                 if (current.getScore() > best_score) {
                     best_score = current.getScore();
@@ -166,8 +167,9 @@ public class AssessedExercise {
 
                 boolean found = false;
                 if (article.getTitle() != null) {
-                    for (NewsArticle comparingNewsArticle : bestMatchesArticles) {
-                        if(comparingNewsArticle.getTitle() != null && TextDistanceCalculator.similarity(article.getTitle(), comparingNewsArticle.getTitle()) < TITLE_SIMILARITY_TRESHOLD) {
+                    for (RankedResult rankedResult : bestRankedResults) {
+                        NewsArticle comparingArticle = rankedResult.getArticle();
+                        if(comparingArticle.getTitle() != null && TextDistanceCalculator.similarity(article.getTitle(), comparingArticle.getTitle()) < TITLE_SIMILARITY_TRESHOLD) {
                             found = true;
                             duplicate_counter++;
                             break;
@@ -176,7 +178,7 @@ public class AssessedExercise {
                 }
 
                 if(!found) {
-                    bestMatchesArticles.add(article);
+                    bestRankedResults.add(current);
                 }
             }
             else {
@@ -187,16 +189,16 @@ public class AssessedExercise {
         	best_score = Math.round(best_score * 100.0) / 100.0;
         	worst_score = Math.round(worst_score * 100.0) / 100.0;
             print("Executing query: \"" + query.getOriginalQuery() + "\"", "Number of duplicates removed: " + duplicate_counter, "Best score: " + best_score, "Worst score: " + worst_score, "Time taken: " + (System.currentTimeMillis() - startTime) + "ms");
-			for(NewsArticle article : bestMatchesArticles) {
+			for(RankedResult rankedResult : bestRankedResults) {
 				String title = "<no title>";
-				if (article.getTitle() != null) {
-					title = article.getTitle();
+				if (rankedResult.getArticle().getTitle() != null) {
+					title = rankedResult.getArticle().getTitle();
 				}
 				print("\t", title);
 			}
 			print("\n");
         }
-        return bestMatchesArticles;
+        return bestRankedResults;
     }
 	
 	public static List<DocumentRanking> rankDocuments(SparkSession spark, String queryFile, String newsFile) {
@@ -221,13 +223,14 @@ public class AssessedExercise {
         
         Broadcast<Map<String, Integer>> corpusTokenCountMapBroadcast = JavaSparkContext.fromSparkContext(spark.sparkContext()).broadcast(tokenCountMapAccumulator.value());
 
+        List<DocumentRanking> results = new ArrayList<DocumentRanking>();
         //go over all queries, and for each query, run the processQuery function
         for (Query query : queries.collectAsList()) {
-            List<NewsArticle> queryResult = processQuery(spark, query, proccessedNews, averageTokenCountPerDocument, corpusTokenCountMapBroadcast, totalDocsInCorups, 10, true);
+            List<RankedResult> rankedResult = processQuery(spark, query, proccessedNews, averageTokenCountPerDocument, corpusTokenCountMapBroadcast, totalDocsInCorups, 10, true);
+            results.add(new DocumentRanking(query, rankedResult));
         }
 
-		return null;
+		return results;
 	}
-	
 	
 }

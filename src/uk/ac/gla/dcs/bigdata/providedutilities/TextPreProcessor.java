@@ -15,8 +15,6 @@ import org.terrier.terms.BaseTermPipelineAccessor;
  *
  */
 public class TextPreProcessor {
-
-	
 	BaseTermPipelineAccessor termProcessingPipeline; // processes an individual term
 	Tokeniser tokeniser; // splits a string into multiple terms
 	

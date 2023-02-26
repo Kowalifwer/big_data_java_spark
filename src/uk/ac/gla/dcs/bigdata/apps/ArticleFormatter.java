@@ -53,5 +53,4 @@ public class ArticleFormatter implements MapFunction<NewsArticle,ProcessedArticl
         ProcessedArticle processed_article = new ProcessedArticle(article, tokenCounts, totalTokenCount);
         return processed_article;
     }
-        
 }
