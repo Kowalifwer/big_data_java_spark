@@ -1,8 +1,9 @@
 package uk.ac.gla.dcs.bigdata.apps;
+import uk.ac.gla.dcs.bigdata.providedstructures.NewsArticle;
+
 import java.io.Serializable;
 import java.util.Map;
 
-import uk.ac.gla.dcs.bigdata.providedstructures.NewsArticle;
 
 public class ProcessedArticle implements Serializable {
 

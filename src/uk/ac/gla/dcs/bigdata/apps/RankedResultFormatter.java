@@ -1,10 +1,11 @@
 package uk.ac.gla.dcs.bigdata.apps;
-import org.apache.spark.api.java.function.MapFunction;
-import org.apache.spark.broadcast.Broadcast;
-import java.util.Map;
-
 import uk.ac.gla.dcs.bigdata.providedstructures.RankedResult;
 import uk.ac.gla.dcs.bigdata.providedutilities.DPHScorer;
+
+import java.util.Map;
+
+import org.apache.spark.api.java.function.MapFunction;
+import org.apache.spark.broadcast.Broadcast;
 
 /**
  * A custom Spark map function that formats a processed news article into a RankedResult with a DPH score for a given query.

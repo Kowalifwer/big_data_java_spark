@@ -1,12 +1,15 @@
 package uk.ac.gla.dcs.bigdata.apps;
+
 import org.apache.spark.api.java.function.MapFunction;
+import org.apache.spark.util.LongAccumulator;
+
 import uk.ac.gla.dcs.bigdata.providedstructures.NewsArticle;
 import uk.ac.gla.dcs.bigdata.providedutilities.TextPreProcessor;
 import uk.ac.gla.dcs.bigdata.providedstructures.ContentItem;
+
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.spark.util.LongAccumulator;
 
 /**
  * A custom Spark map function that formats a news article into a processed article with token counts and updates two accumulators for global token counts.
@@ -21,7 +24,7 @@ public class ArticleFormatter implements MapFunction<NewsArticle,ProcessedArticl
     /**
      * Constructs an article formatter with two accumulators as parameters.
      * @param tokenCountAccumulator an accumulator for the total number of tokens in all articles
-     * @param tokenCountsMapAccumulator an accumulator for the number of articles in which a token occurs (0 or 1)
+     * @param tokenCountsMapAccumulator an accumulator for the number of articles in which a token occurs
      */
     public ArticleFormatter(LongAccumulator tokenCountAccumulator, CountMapAccumulator tokenCountsMapAccumulator) {
         this.tokenCountAccumulator = tokenCountAccumulator;
@@ -57,7 +60,7 @@ public class ArticleFormatter implements MapFunction<NewsArticle,ProcessedArticl
         //create a map to store the token counts for this article
         Map<String, Integer> tokenCounts = new HashMap<String, Integer>();
 
-        //create a separate map to store the binary token counts, i.e. the number of articles in which a token occurs
+        //create a separate map to store the binary token counts, i.e. the number of articles in which a token occurs (capped at 1)
         HashMap<String, Integer> tokenCountsBinary = new HashMap<String, Integer>();
 
         //get the number of tokens in this article
@@ -79,7 +82,7 @@ public class ArticleFormatter implements MapFunction<NewsArticle,ProcessedArticl
         }
         //update the number of articles in which a token occurs accumulator
         tokenCountsMapAccumulator.add(tokenCountsBinary);
-        
+
         //create a processed article with the token counts map and total token count
         ProcessedArticle processed_article = new ProcessedArticle(article, tokenCounts, totalTokenCount);
         return processed_article;

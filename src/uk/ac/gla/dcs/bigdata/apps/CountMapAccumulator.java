@@ -1,9 +1,8 @@
 package uk.ac.gla.dcs.bigdata.apps;
-
-import org.apache.spark.util.AccumulatorV2;
-
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
+import org.apache.spark.util.AccumulatorV2;
 
 /**
  * This is a custom Spark Accumulator, which can be used to merge string:integer maps. The accumulator will increase the integer count values of existing keys, rather than overwriting them.
