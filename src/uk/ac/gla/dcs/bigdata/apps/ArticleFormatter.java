@@ -12,9 +12,9 @@ public class ArticleFormatter implements MapFunction<NewsArticle,ProcessedArticl
     private static final long serialVersionUID = -484810270156328326L;
 
     LongAccumulator tokenCountAccumulator;
-    MapAccumulator tokenCountsMapAccumulator;
+    CountMapAccumulator tokenCountsMapAccumulator;
 
-    public ArticleFormatter(LongAccumulator tokenCountAccumulator, MapAccumulator tokenCountsMapAccumulator) {
+    public ArticleFormatter(LongAccumulator tokenCountAccumulator, CountMapAccumulator tokenCountsMapAccumulator) {
         this.tokenCountAccumulator = tokenCountAccumulator;
         this.tokenCountsMapAccumulator = tokenCountsMapAccumulator;
     }

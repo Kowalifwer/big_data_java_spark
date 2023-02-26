@@ -87,12 +87,11 @@ public class AssessedExercise {
 		String queryFile = System.getenv("bigdata.queries");
 		if (queryFile==null) queryFile = "data/queries.list"; // default is a sample with 3 queries
         // if (queryFile==null) queryFile = "data/queries_custom.list"; // default is a sample with 3 queries
-
 		
 		// Get the location of the input news articles
 		String newsFile = System.getenv("bigdata.news");
-		// if (newsFile==null) newsFile = "data/TREC_Washington_Post_collection.v3.example.json"; // default is a sample of 5000 news articles
-		if (newsFile==null) newsFile = "data/TREC_Washington_Post_collection.v2.jl.fix.json"; // default is a sample of 600,000 news articles
+		if (newsFile==null) newsFile = "data/TREC_Washington_Post_collection.v3.example.json"; // default is a sample of 5000 news articles
+		// if (newsFile==null) newsFile = "data/TREC_Washington_Post_collection.v2.jl.fix.json"; // default is a sample of 600,000 news articles
 		// Call the student's code
 		List<DocumentRanking> results = rankDocuments(spark, queryFile, newsFile);
 		
@@ -212,7 +211,7 @@ public class AssessedExercise {
 		Dataset<NewsArticle> news = newsjson.map(new NewsFormaterMap(), Encoders.bean(NewsArticle.class)); // this converts each row into a NewsArticle
 
 		LongAccumulator tokenCountAccumulator = spark.sparkContext().longAccumulator();
-		MapAccumulator tokenCountMapAccumulator = new MapAccumulator();
+		CountMapAccumulator tokenCountMapAccumulator = new CountMapAccumulator();
         spark.sparkContext().register(tokenCountMapAccumulator, "tokenCountMapAccumulator");
         
 		ArticleFormatter articleFormatter = new ArticleFormatter(tokenCountAccumulator, tokenCountMapAccumulator);
