@@ -119,7 +119,7 @@ public class AssessedExercise {
 	}
 
     /**
-     * Processes a query and returns a list of top nResults ranked results, based on the DPH scores of the query terms w.r.t. the documents.
+     * Starts a Spark map transformation, that processes a query and returns a list of top nResults ranked results, based on the DPH scores of the query terms w.r.t. the documents.
      * @param spark The SparkSession object
      * @param query The Query object containing the query terms and counts
      * @param processedArticles The Dataset of ProcessedArticle objects containing the articles to be searched, and their token metrics.
@@ -243,7 +243,8 @@ public class AssessedExercise {
 
         // Create a list of DocumentRanking objects, which will store the results of each query
         List<DocumentRanking> results = new ArrayList<DocumentRanking>();
-        //go over all queries, for each one run the processQuery function that will return a list of RankedResults of size nResults 
+        
+        // Go over all queries, for each one run the processQuery function that will return a list of RankedResults of size nResults 
         for (Query query : queries.collectAsList()) {
             List<RankedResult> rankedResult = processQuery(spark, query, processedArticles, totalDocsInCorups, averageTokenCountPerDocument, corpusTokenCountMapBroadcast, 10, true);
             results.add(new DocumentRanking(query, rankedResult));
