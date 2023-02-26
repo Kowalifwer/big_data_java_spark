@@ -5,8 +5,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.spark.util.AccumulatorV2;
 
 /**
- * This is a custom Spark Accumulator, which can be used to merge string:integer maps. The accumulator will increase the integer count values of existing keys, rather than overwriting them.
- * This accumulator is safe to be used concurrently, and is used to merge the token counts from each partition, into a single countMap.
+ * This is a custom Spark Accumulator, which can be used to accumulate string:integer maps. The accumulator will increase the integer count values of existing keys, rather than overwriting them.
+ * This accumulator is thread-safe, and is used to merge the token counts from each partition, into a single countMap.
  * 
  * @author Artem, Roman
  *

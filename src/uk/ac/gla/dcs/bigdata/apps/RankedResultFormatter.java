@@ -19,10 +19,10 @@ public class RankedResultFormatter implements MapFunction<ProcessedArticle, Rank
 
     /**
      * Constructs a new RankedResultFormatter object with the given parameters.
+     * @param totalDocumentsInCorpus The total number of documents in the corpus
      * @param averageTokenCountPerDocument The average number of tokens per document in the corpus
      * @param globalTokenCountMap A broadcast variable that maps a token to then number of articles in which the token occurs
      * @param queryTokenCounts A broadcast variable that contains the query token counts for each term
-     * @param totalDocumentsInCorpus The total number of documents in the corpus
      */
     public RankedResultFormatter(long totalDocumentsInCorpus, double averageTokenCountPerDocument, Broadcast<Map<String, Short>> queryTokenCounts, Broadcast<Map<String, Integer>> globalTokenCountMap) {
         this.totalDocumentsInCorpus = totalDocumentsInCorpus;
