@@ -12,10 +12,10 @@ import org.apache.spark.broadcast.Broadcast;
  * @author Artem, Roman
  */
 public class RankedResultFormatter implements MapFunction<ProcessedArticle, RankedResult> {
-    double averageTokenCountPerDocument;
-    Broadcast<Map<String, Integer>> globalTokenCountMap;
-    Broadcast<Map<String, Short>> queryTokenCounts;
     long totalDocumentsInCorpus;
+    double averageTokenCountPerDocument;
+    Broadcast<Map<String, Short>> queryTokenCounts;
+    Broadcast<Map<String, Integer>> globalTokenCountMap;
 
     /**
      * Constructs a new RankedResultFormatter object with the given parameters.
@@ -24,11 +24,11 @@ public class RankedResultFormatter implements MapFunction<ProcessedArticle, Rank
      * @param queryTokenCounts A broadcast variable that contains the query token counts for each term
      * @param totalDocumentsInCorpus The total number of documents in the corpus
      */
-    public RankedResultFormatter(double averageTokenCountPerDocument, Broadcast<Map<String, Integer>> globalTokenCountMap, Broadcast<Map<String, Short>> queryTokenCounts, long totalDocumentsInCorpus) {
-        this.averageTokenCountPerDocument = averageTokenCountPerDocument;
-        this.globalTokenCountMap = globalTokenCountMap;
-        this.queryTokenCounts = queryTokenCounts;
+    public RankedResultFormatter(long totalDocumentsInCorpus, double averageTokenCountPerDocument, Broadcast<Map<String, Short>> queryTokenCounts, Broadcast<Map<String, Integer>> globalTokenCountMap) {
         this.totalDocumentsInCorpus = totalDocumentsInCorpus;
+        this.averageTokenCountPerDocument = averageTokenCountPerDocument;
+        this.queryTokenCounts = queryTokenCounts;
+        this.globalTokenCountMap = globalTokenCountMap;
     }
 
     /**

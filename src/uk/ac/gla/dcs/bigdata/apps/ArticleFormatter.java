@@ -12,10 +12,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * A custom Spark map function that formats a news article into a processed article with token counts and updates two accumulators for global token counts.
+ * A custom Spark map trasnformation that formats a news article into a processed article with token counts and updates two accumulators for global token counts.
  * @author Artem, Roman
  */
-
 public class ArticleFormatter implements MapFunction<NewsArticle,ProcessedArticle> {
     private static final long serialVersionUID = -484810270156328326L;
     LongAccumulator tokenCountAccumulator;

@@ -86,13 +86,14 @@ public class AssessedExercise {
 		// Get the location of the input queries
 		String queryFile = System.getenv("bigdata.queries");
 		if (queryFile==null) queryFile = "data/queries.list"; // default is a sample with 3 queries
-        // if (queryFile==null) queryFile = "data/queries_custom.list"; // default is a sample with 3 queries
+        // UNCOMMENT TO USE CUSTOM QUERY LISTif (queryFile==null) queryFile = "data/queries_custom.list";
 		
 		// Get the location of the input news articles
 		String newsFile = System.getenv("bigdata.news");
 		if (newsFile==null) newsFile = "data/TREC_Washington_Post_collection.v3.example.json"; // default is a sample of 5000 news articles
 		// if (newsFile==null) newsFile = "data/TREC_Washington_Post_collection.v2.jl.fix.json"; // default is a sample of 600,000 news articles
-		// Call the student's code
+		
+        // Call the student's code
 		List<DocumentRanking> results = rankDocuments(spark, queryFile, newsFile);
 		
 		// Close the spark session
@@ -117,42 +118,52 @@ public class AssessedExercise {
 		finalize_print();
 	}
 
-    //for query in all existing queries FOR LOOP
-        	// for document in processedArticles SPARK LOOP -to calculate relevancy scores for all the documents
-				//for query token in query -> fetch scores from map NORMAL FOR
-                //sum all the token stuff
-			//-> output map from QUERY to DOCUMENT RELEVANCY/SCORE
-        
-        
-                //first we have query -> all documents map. Each document will store associated DPH score.
-
-    public static List<RankedResult> processQuery(SparkSession spark, Query query, Dataset<ProcessedArticle> processedArticles, double averageTokenCountPerDocument, Broadcast<Map<String, Integer>> corpusTokenCountMap, long totalDocsInCorpusBroadcast, int nResults, boolean verbose) {
+    /**
+     * Processes a query and returns a list of top nResults ranked results, based on the DPH scores of the query terms w.r.t. the documents.
+     * @param spark The SparkSession object
+     * @param query The Query object containing the query terms and counts
+     * @param processedArticles The Dataset of ProcessedArticle objects containing the articles to be searched, and their token metrics.
+     * @param totalDocsInCorpusBroadcast The total number of documents in the corpus
+     * @param averageTokenCountPerDocument The average number of tokens per document in the corpus
+     * @param corpusTokenCountMap The broadcast variable containing a map from token to the number of articles in which then token occurs (in the corpus)
+     * @param nResults The maximum number of results to return
+     * @param verbose A boolean flag indicating whether to print a verbose report for each query, or not
+     * @return A list of RankedResult objects ordered by descending score
+     */
+    public static List<RankedResult> processQuery(SparkSession spark, Query query, Dataset<ProcessedArticle> processedArticles, long totalDocsInCorpusBroadcast, double averageTokenCountPerDocument, Broadcast<Map<String, Integer>> corpusTokenCountMap, int nResults, boolean verbose) {
 		long startTime = System.currentTimeMillis();
 
+        //get the list of query terms and the respective array of counts
         List<String> queryTerms = query.getQueryTerms();
         short[] queryTermCounts = query.getQueryTermCounts();
 
+        //create a map from query term to query term count
         Map<String, Short> queryTokenCountMap = new HashMap<String, Short>();
         for (int i = 0; i < queryTerms.size(); i++) {
             queryTokenCountMap.put(queryTerms.get(i), queryTermCounts[i]);
         }
-
+        //broadcast the query token count map
         Broadcast<Map<String, Short>> queryTokenCountMapBroadcast = JavaSparkContext.fromSparkContext(spark.sparkContext()).broadcast(queryTokenCountMap);
         
-        RankedResultFormatter resultsFormatter = new RankedResultFormatter(averageTokenCountPerDocument, corpusTokenCountMap, queryTokenCountMapBroadcast, totalDocsInCorpusBroadcast);
-
+        //instantiate the ranked results formatter with 2 variables and 2 broadcast variables. More details in the class constructor documentation below.
+        RankedResultFormatter resultsFormatter = new RankedResultFormatter(totalDocsInCorpusBroadcast, averageTokenCountPerDocument, queryTokenCountMapBroadcast, corpusTokenCountMap);
+        // map the processed articles to the ranked results, using the instantiated formatter
         Dataset<RankedResult> queryResults = processedArticles.map(resultsFormatter, Encoders.bean(RankedResult.class));
-		Dataset<RankedResult> orderedQueryResults = queryResults.orderBy(functions.col("score").desc());
-        //orderedQueryResults limit to first max of nResults*10 and collect as list
-
+		// order the results by descending order of score
+        Dataset<RankedResult> orderedQueryResults = queryResults.orderBy(functions.col("score").desc());
+        
+        //orderedQueryResults limit to first max of nResults*10 and collect it into a list, so that we can work with it.
+        //limiting to nResults*10 is to ensure that we have enough results to filter out duplicates, and to prevent loading the whole dataset into memory.
         List<RankedResult> orderedQueryResultsList = orderedQueryResults.limit(nResults*10).collectAsList();
+        //instantiate empty list to store the best, non duplicate results
         List<RankedResult> bestRankedResults = new ArrayList<RankedResult>();
 
-		final double TITLE_SIMILARITY_TRESHOLD = 0.5;
-        int duplicate_counter = 0;
-        double best_score = 0;
-        double worst_score = Double.MAX_VALUE;
-    
+		final double TITLE_SIMILARITY_TRESHOLD = 0.5; //thereshold for 2 titles to be considered similar, and regarded as duplicates
+        int duplicate_counter = 0; //counter for the number of duplicates found (for verbose report)
+        double best_score = 0; //best score found (for verbose report)
+        double worst_score = Double.MAX_VALUE; //worst score found (for verbose report)
+
+        //iterate over the ordered results list, and add the best results to the bestRankedResults list, while filtering out title duplicates
 		for (RankedResult current: orderedQueryResultsList) {
             if (bestRankedResults.size() < nResults) {
                 NewsArticle article = current.getArticle();
@@ -163,20 +174,22 @@ public class AssessedExercise {
                 if (current.getScore() < worst_score) {
                     worst_score = current.getScore();
                 }
-
-                boolean found = false;
+                
+                boolean hasDuplicate = false; //flag to indicate whether the current result has a duplicate title in the current bestRankedResults list, or not
+                
+                //if the current result has a title, and it is similar to any of the titles in the bestRankedResults list, then it is a duplicate
                 if (article.getTitle() != null) {
                     for (RankedResult rankedResult : bestRankedResults) {
                         NewsArticle comparingArticle = rankedResult.getArticle();
                         if(comparingArticle.getTitle() != null && TextDistanceCalculator.similarity(article.getTitle(), comparingArticle.getTitle()) < TITLE_SIMILARITY_TRESHOLD) {
-                            found = true;
+                            hasDuplicate = true;
                             duplicate_counter++;
                             break;
                         }
                     }
                 }
 
-                if(!found) {
+                if(!hasDuplicate) {
                     bestRankedResults.add(current);
                 }
             }
@@ -184,6 +197,8 @@ public class AssessedExercise {
                 break;
             }
         }
+
+        //code that handles the formatting for the verbose report
 		if (verbose) {
         	best_score = Math.round(best_score * 100.0) / 100.0;
         	worst_score = Math.round(worst_score * 100.0) / 100.0;
@@ -210,22 +225,27 @@ public class AssessedExercise {
 		Dataset<Query> queries = queriesjson.map(new QueryFormaterMap(), Encoders.bean(Query.class)); // this converts each row into a Query
 		Dataset<NewsArticle> news = newsjson.map(new NewsFormaterMap(), Encoders.bean(NewsArticle.class)); // this converts each row into a NewsArticle
 
+        // Initialize our 2 accumulators to be passed into articleFormatter. For more details, see articleFormatter class constructor java doc.
 		LongAccumulator tokenCountAccumulator = spark.sparkContext().longAccumulator();
 		CountMapAccumulator tokenCountMapAccumulator = new CountMapAccumulator();
         spark.sparkContext().register(tokenCountMapAccumulator, "tokenCountMapAccumulator");
         
+        // Process the news articles, and return a new dataset of ProcessedArticles
 		ArticleFormatter articleFormatter = new ArticleFormatter(tokenCountAccumulator, tokenCountMapAccumulator);
-		Dataset<ProcessedArticle> proccessedNews = news.map(articleFormatter, Encoders.bean(ProcessedArticle.class));
+		Dataset<ProcessedArticle> processedArticles = news.map(articleFormatter, Encoders.bean(ProcessedArticle.class));
         
-        long totalDocsInCorups = proccessedNews.count();
+        // Count the total number of documents in the corpus, and calculate the average number of tokens per document
+        long totalDocsInCorups = processedArticles.count();
         double averageTokenCountPerDocument = (double)tokenCountAccumulator.value() / totalDocsInCorups;
         
+        // Broadcast the variable that maps a token to then number of articles in which the token occurs (across the whole corpus)
         Broadcast<Map<String, Integer>> corpusTokenCountMapBroadcast = JavaSparkContext.fromSparkContext(spark.sparkContext()).broadcast(tokenCountMapAccumulator.value());
 
+        // Create a list of DocumentRanking objects, which will store the results of each query
         List<DocumentRanking> results = new ArrayList<DocumentRanking>();
-        //go over all queries, and for each query, run the processQuery function
+        //go over all queries, for each one run the processQuery function that will return a list of RankedResults of size nResults 
         for (Query query : queries.collectAsList()) {
-            List<RankedResult> rankedResult = processQuery(spark, query, proccessedNews, averageTokenCountPerDocument, corpusTokenCountMapBroadcast, totalDocsInCorups, 10, true);
+            List<RankedResult> rankedResult = processQuery(spark, query, processedArticles, totalDocsInCorups, averageTokenCountPerDocument, corpusTokenCountMapBroadcast, 10, true);
             results.add(new DocumentRanking(query, rankedResult));
         }
 
